@@ -16,6 +16,18 @@ class SharedPrefs {
     return prefs.getString(_tokenKey);
   }
 
+  // Cek apakah token ada
+  static Future<bool> hasToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_tokenKey);
+  }
+
+  //refresh token (tidak umum digunakan, tapi bisa ditambahkan jika perlu)
+  static Future<void> getRefreshToken(String newToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, newToken);
+  }
+
   // Hapus token (saat logout)
   static Future<void> removeToken() async {
     final prefs = await SharedPreferences.getInstance();

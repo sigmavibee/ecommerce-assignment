@@ -4,13 +4,22 @@ import 'package:provider/provider.dart';
 import 'config/app_router.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/product_controller.dart';
+import 'services/api_service.dart';
+import 'services/auth_services.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final authService = AuthService();
+  final apiService = ApiService(authService: authService);
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => AuthController()),
-        ChangeNotifierProvider(create: (context) => ProductController()),
+        ChangeNotifierProvider(create: (_) => AuthController()),
+        ChangeNotifierProvider(create: (_) => ProductController(apiService)),
+        Provider<AuthService>(create: (_) => authService),
+        Provider<ApiService>(create: (_) => apiService),
       ],
       child: MyApp(),
     ),

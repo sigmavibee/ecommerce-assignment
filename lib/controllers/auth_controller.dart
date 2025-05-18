@@ -2,10 +2,13 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
+import '../services/auth_services.dart';
 import '../utils/shared_prefs.dart';
 
 class AuthController with ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService = ApiService(
+    authService: AuthService(),
+  );
   User? _currentUser;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -35,6 +38,7 @@ class AuthController with ChangeNotifier {
         notifyListeners();
 
         debugPrint('Attempting login with email: $email');
+        debugPrint('token: ${await SharedPrefs.getToken()}');
 
         final user = await _apiService.login(email, password);
 
@@ -44,7 +48,7 @@ class AuthController with ChangeNotifier {
 
         _currentUser = user;
         await SharedPrefs.saveToken(user.token!);
-
+        debugPrint('Token saved: ${await SharedPrefs.getToken()}');
         debugPrint('Login successful for user: ${user.email}');
 
         // Navigate based on role

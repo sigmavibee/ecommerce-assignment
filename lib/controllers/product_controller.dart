@@ -1,69 +1,78 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
+import '../services/api_service.dart' as api_service;
 import '../services/api_service.dart';
-
-// Define UnauthorizedException if not already defined elsewhere
-class UnauthorizedException implements Exception {
-  final String message;
-  UnauthorizedException([this.message = 'Unauthorized']);
-  @override
-  String toString() => 'UnauthorizedException: $message';
-}
-
-// Define ForbiddenException if not already defined elsewhere
-class ForbiddenException implements Exception {
-  final String message;
-  ForbiddenException([this.message = 'Forbidden']);
-  @override
-  String toString() => 'ForbiddenException: $message';
-}
+import '../utils/exceptions.dart' as exceptions;
 
 class ProductController with ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
   List<Product> _products = [];
   bool _isLoading = false;
   String? _errorMessage;
 
-  List<Product> get products => _products;
+  ProductController(this._apiService);
+
+  List<Product> get products => List.unmodifiable(_products);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  void resetError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _handleError(dynamic error) {
+    debugPrint('ProductController Error: $error');
+
+    if (error is exceptions.UnauthorizedException) {
+      _errorMessage = 'Session expired. Please login again.';
+    } else if (error is exceptions.ForbiddenException) {
+      _errorMessage = 'You don\'t have permission for this action.';
+    } else if (error is exceptions.ApiException) {
+      _errorMessage = error.message;
+    } else {
+      _errorMessage = error.toString();
+    }
+
+    notifyListeners();
+  }
+
   Future<void> fetchProducts() async {
     try {
-      _resetError();
+      _errorMessage = null;
       _isLoading = true;
       notifyListeners();
 
       _products = await _apiService.getProducts();
     } catch (e) {
-      _handleError(e, 'Error fetching products');
-      rethrow;
+      _handleError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> createProduct(Product product) async {
+  Future<bool> createProduct(Product product) async {
     try {
-      _resetError();
+      _errorMessage = null;
       _isLoading = true;
       notifyListeners();
 
       final newProduct = await _apiService.createProduct(product);
       _products.add(newProduct);
+      return true;
     } catch (e) {
-      _handleError(e, 'Error creating product');
-      rethrow;
+      _handleError(e);
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> updateProduct(Product product) async {
+  Future<bool> updateProduct(Product product) async {
     try {
-      _resetError();
+      _errorMessage = null;
       _isLoading = true;
       notifyListeners();
 
@@ -72,49 +81,36 @@ class ProductController with ChangeNotifier {
       if (index != -1) {
         _products[index] = updatedProduct;
       }
+      return true;
     } catch (e) {
-      _handleError(e, 'Error updating product');
-      rethrow;
+      _handleError(e);
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> deleteProduct(int id) async {
+  Future<bool> deleteProduct(int id) async {
     try {
-      _resetError();
+      _errorMessage = null;
       _isLoading = true;
       notifyListeners();
 
       await _apiService.deleteProduct(id);
       _products.removeWhere((product) => product.id == id);
+      return true;
     } catch (e) {
-      _handleError(e, 'Error deleting product');
-      rethrow;
+      _handleError(e);
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  void _resetError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
-
-  void _handleError(dynamic error, String defaultMessage) {
-    if (error is UnauthorizedException) {
-      _errorMessage = 'Session expired. Please login again.';
-    } else if (error is ForbiddenException) {
-      _errorMessage = 'You don\'t have permission to perform this action.';
-    } else {
-      _errorMessage = defaultMessage;
-    }
-    debugPrint('Error: $_errorMessage');
-  }
-
-  void resetError() {
+  void clearProducts() {
+    _products.clear();
     _errorMessage = null;
     notifyListeners();
   }

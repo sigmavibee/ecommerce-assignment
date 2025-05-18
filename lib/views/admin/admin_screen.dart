@@ -15,25 +15,10 @@ class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
 
   @override
-  State<AdminScreen> createState() => AdminScreenState();
+  State<AdminScreen> createState() => _AdminScreenState();
 }
 
-class AdminScreenState extends State<AdminScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAuthentication(context);
-    });
-  }
-
-  Future<void> _checkAuthentication(BuildContext context) async {
-    final authService = context.read<AuthService>();
-    if (!await authService.isAuthenticated()) {
-      context.router.replace(const LoginRoute());
-    }
-  }
-
+class _AdminScreenState extends State<AdminScreen> {
   int _selectedIndex = 0;
 
   static const List<Widget> _pages = <Widget>[
@@ -42,6 +27,24 @@ class AdminScreenState extends State<AdminScreen> {
     OrderProcessPage(),
     ProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuthentication();
+    });
+  }
+
+  Future<void> _checkAuthentication() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    if (!await authService.isAuthenticated()) {
+      if (mounted) {
+        context.router.replace(const LoginRoute());
+      }
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
