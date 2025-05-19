@@ -1,15 +1,23 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/api_service.dart';
+import '../services/upload_service.dart';
 import '../utils/exceptions.dart' as exceptions;
+import 'package:image_picker/image_picker.dart';
 
 class ProductController with ChangeNotifier {
   final ApiService _apiService;
+  final UploadService _uploadService;
   List<Product> _products = [];
   bool _isLoading = false;
   String? _errorMessage;
+  File? _pickedImage; // Changed from XFile to File
 
-  ProductController(this._apiService);
+  File? get pickedImage => _pickedImage;
+
+  ProductController(this._apiService, this._uploadService);
 
   List<Product> get products => List.unmodifiable(_products);
   bool get isLoading => _isLoading;
@@ -91,6 +99,7 @@ class ProductController with ChangeNotifier {
   }
 
   Future<bool> deleteProduct(int id) async {
+    // Changed from int to String
     try {
       _errorMessage = null;
       _isLoading = true;
@@ -98,6 +107,63 @@ class ProductController with ChangeNotifier {
 
       await _apiService.deleteProduct(id);
       _products.removeWhere((product) => product.id == id);
+      return true;
+    } catch (e) {
+      _handleError(e);
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> pickImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile =
+          await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        _pickedImage = File(pickedFile.path);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      _errorMessage = 'Failed to pick image';
+      notifyListeners();
+    }
+  }
+
+  Future<String> uploadImage(File imageFile) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final imageUrl = await _uploadService.uploadImage(XFile(imageFile.path));
+      return imageUrl;
+    } catch (e) {
+      throw Exception('Image upload failed: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> addProductWithImage(Product product) async {
+    try {
+      _errorMessage = null;
+      _isLoading = true;
+      notifyListeners();
+
+      if (_pickedImage != null) {
+        final imageUrl =
+            await _uploadService.uploadImage(XFile(_pickedImage!.path));
+        product = product.copyWith(imageUrl: imageUrl);
+      }
+
+      final newProduct = await _apiService.createProduct(product);
+      _products.add(newProduct);
+      _pickedImage = null;
+      notifyListeners();
       return true;
     } catch (e) {
       _handleError(e);

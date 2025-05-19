@@ -167,19 +167,11 @@ class ApiService {
   Future<Product> createProduct(Product product) async {
     try {
       // Validate required fields
-      if (product.name == null ||
-          product.name!.isEmpty ||
-          product.price == null ||
-          product.price! <= 0 ||
-          product.stock == null ||
-          product.stock! < 0 ||
-          product.description == null ||
-          product.description!.isEmpty ||
-          product.isActive == null ||
-          product.createdAt == null ||
-          product.updatedAt == null ||
-          product.imageUrl == null ||
-          product.imageUrl!.isEmpty) {
+      if (product.name.isEmpty ||
+          product.price <= 0 ||
+          product.stock < 0 ||
+          product.description.isEmpty ||
+          product.imageUrl.isEmpty) {
         throw Exception('All fields are required');
       }
 
@@ -270,6 +262,43 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('Error in deleteProduct: $e');
+      rethrow;
+    }
+  }
+
+  //upload image
+  Future<String> uploadImage(File imageFile) async {
+    try {
+      final token = await authService.getToken();
+      if (token == null) {
+        throw UnauthorizedException('No authentication token found');
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/upload'),
+      );
+      request.headers['Authorization'] = '$token';
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          imageFile.path,
+          filename: 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ),
+      );
+
+      final response = await request.send();
+      final responseBody = await http.Response.fromStream(response);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(responseBody.body);
+        return responseData['imageUrl'];
+      } else {
+        final error = jsonDecode(responseBody.body);
+        throw Exception(error['message'] ?? 'Failed to upload image');
+      }
+    } catch (e) {
+      debugPrint('Error in uploadImage: $e');
       rethrow;
     }
   }

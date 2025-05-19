@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../models/product_model.dart';
@@ -17,8 +20,8 @@ class _ProductDialogState extends State<ProductDialog> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _stockController;
   late final TextEditingController _priceController;
-  late final TextEditingController _imageUrlController;
   late bool _active;
+  File? _imageFile; // Untuk menyimpan file gambar yang dipilih
 
   @override
   void initState() {
@@ -33,9 +36,6 @@ class _ProductDialogState extends State<ProductDialog> {
     _priceController = TextEditingController(
       text: widget.product?.price.toString() ?? '',
     );
-    _imageUrlController = TextEditingController(
-      text: widget.product?.imageUrl ?? '',
-    );
     _active = widget.product?.isActive ?? true;
   }
 
@@ -45,15 +45,23 @@ class _ProductDialogState extends State<ProductDialog> {
     _descriptionController.dispose();
     _priceController.dispose();
     _stockController.dispose();
-    _imageUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final productController = context.read<ProductController>();
+    await productController.pickImage();
+    if (productController.pickedImage != null) {
+      setState(() {
+        _imageFile = productController.pickedImage;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final errorMessage = context.select<ProductController, String?>(
-      (controller) => controller.errorMessage,
-    );
+    final productController = context.watch<ProductController>();
+    final errorMessage = productController.errorMessage;
 
     if (errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -63,9 +71,10 @@ class _ProductDialogState extends State<ProductDialog> {
             backgroundColor: Colors.red,
           ),
         );
-        context.read<ProductController>().resetError();
+        productController.resetError();
       });
     }
+
     return AlertDialog(
       title: Text(widget.product == null ? 'Add Product' : 'Edit Product'),
       content: Form(
@@ -85,14 +94,12 @@ class _ProductDialogState extends State<ProductDialog> {
                 _buildTextField(_stockController, 'Stock',
                     keyboardType: TextInputType.number,
                     validator: _validateStock),
-                SizedBox(
-                  height: 12,
-                ),
+                const SizedBox(height: 12),
                 _buildTextField(_priceController, 'Price',
                     keyboardType: TextInputType.number,
                     validator: _validatePrice),
                 const SizedBox(height: 12),
-                _buildTextField(_imageUrlController, 'Image URL'),
+                _buildImageUploadSection(productController),
                 const SizedBox(height: 12),
                 _buildActiveSwitch(),
               ],
@@ -106,8 +113,38 @@ class _ProductDialogState extends State<ProductDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: _submitForm,
-          child: Text(widget.product == null ? 'Add' : 'Save'),
+          onPressed: productController.isLoading ? null : _submitForm,
+          child: productController.isLoading
+              ? const CircularProgressIndicator()
+              : Text(widget.product == null ? 'Add' : 'Save'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageUploadSection(ProductController productController) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Product Image', style: TextStyle(fontSize: 16)),
+        const SizedBox(height: 8),
+        Container(
+          height: 120,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: _imageFile != null
+              ? Image.file(_imageFile!, fit: BoxFit.cover)
+              : widget.product?.imageUrl != null
+                  ? Image.network(widget.product!.imageUrl, fit: BoxFit.cover)
+                  : const Center(child: Text('No image selected')),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: productController.isLoading ? null : _pickImage,
+          child: const Text('Select Image'),
         ),
       ],
     );
@@ -163,23 +200,40 @@ class _ProductDialogState extends State<ProductDialog> {
     return null;
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
+      final productController = context.read<ProductController>();
       final product = Product(
         id: widget.product?.id ?? DateTime.now().millisecondsSinceEpoch,
         name: _nameController.text,
         description: _descriptionController.text,
         stock: int.parse(_stockController.text),
-        imageUrl: _imageUrlController.text.isNotEmpty
-            ? _imageUrlController.text
-            : 'https://via.placeholder.com/80',
-        isActive: _active,
+        imageFile: productController.pickedImage,
         price: double.tryParse(_priceController.text) ?? 0.0,
+        isActive: _active,
         createdAt: widget.product?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
+        imageUrl: widget.product?.imageUrl ?? '',
       );
-      debugPrint('Product: ${product.toJson()}');
-      Navigator.pop(context, product);
+
+      try {
+        if (widget.product == null) {
+          await productController.addProductWithImage(product);
+        } else {
+          if (_imageFile != null) {
+            final imageUrl = await productController.uploadImage(_imageFile!);
+            await productController
+                .updateProduct(product.copyWith(imageUrl: imageUrl));
+          } else {
+            await productController.updateProduct(product);
+          }
+        }
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
 }

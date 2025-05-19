@@ -1,3 +1,5 @@
+import 'dart:io';
+
 class Product {
   final int id;
   final String name;
@@ -5,6 +7,7 @@ class Product {
   final double price;
   final int stock;
   final String imageUrl;
+  final File? imageFile;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -16,10 +19,37 @@ class Product {
     required this.price,
     required this.stock,
     required this.imageUrl,
+    required this.imageFile,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  Product copyWith({
+    int? id,
+    String? name,
+    String? description,
+    double? price,
+    int? stock,
+    String? imageUrl,
+    File? imageFile,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      stock: stock ?? this.stock,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imageFile: imageFile ?? this.imageFile,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -31,6 +61,9 @@ class Product {
           : double.parse(json['price'].toString()),
       stock: json['stock'],
       imageUrl: json['image_url'],
+      imageFile: json['image_file'] != null
+          ? File(json['image_file'])
+          : null, // Assuming image_file is a file path
       isActive: json['is_active'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
