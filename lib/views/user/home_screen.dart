@@ -171,8 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: ClipRRect(
                                     borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(18)),
-                                    child: Image.asset(
-                                      'assets/images/loginlogo.png', // Placeholder image
+                                    child: Image.network(
+                                      product.imageUrl, // Placeholder image
                                       fit: BoxFit.cover,
                                     ),
                                   ),

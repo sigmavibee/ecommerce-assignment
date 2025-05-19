@@ -35,21 +35,17 @@ class PriceSettingPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
-                leading: product.imageUrl != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          product.imageUrl!,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                              Icons.broken_image,
-                              size: 56,
-                              color: Colors.grey),
-                        ),
-                      )
-                    : const Icon(Icons.image, size: 56, color: Colors.grey),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    product.imageUrl,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image,
+                        size: 56, color: Colors.grey),
+                  ),
+                ),
                 title: Text(
                   product.name,
                   style: const TextStyle(fontWeight: FontWeight.w600),

@@ -25,11 +25,6 @@ class DashboardPage extends StatelessWidget {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 ElevatedButton(
-                    onPressed: () {
-                      authController.logout(context);
-                    },
-                    child: Text('Logout')),
-                ElevatedButton(
                   onPressed: () => _showAddProductDialog(context),
                   child: const Text('Add Product'),
                 ),
