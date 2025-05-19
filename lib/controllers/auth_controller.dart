@@ -38,7 +38,6 @@ class AuthController with ChangeNotifier {
         notifyListeners();
 
         debugPrint('Attempting login with email: $email');
-        debugPrint('token: ${await SharedPrefs.getToken()}');
 
         final user = await _apiService.login(email, password);
 
@@ -48,9 +47,11 @@ class AuthController with ChangeNotifier {
 
         _currentUser = user;
         await SharedPrefs.saveToken(user.token!);
-        debugPrint('Token saved: ${await SharedPrefs.getToken()}');
+        await SharedPrefs.saveRefreshToken(user.refreshToken!);
+        debugPrint('Token saved: ${user.token}');
+        // refresh token debug
+        debugPrint('Refresh token: ${user.refreshToken}');
         debugPrint('Login successful for user: ${user.email}');
-
         // Navigate based on role
         if (user.role == 'admin') {
           context.router.replaceNamed('/admin');

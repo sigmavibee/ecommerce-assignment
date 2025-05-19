@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/product_controller.dart';
 import '../../models/product_model.dart';
 import '../widgets/product_dialog.dart';
@@ -10,6 +11,7 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authController = context.watch<AuthController>();
     return Scaffold(
       body: Column(
         children: [
@@ -22,6 +24,11 @@ class DashboardPage extends StatelessWidget {
                   'Products',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
+                ElevatedButton(
+                    onPressed: () {
+                      authController.logout(context);
+                    },
+                    child: Text('Logout')),
                 ElevatedButton(
                   onPressed: () => _showAddProductDialog(context),
                   child: const Text('Add Product'),

@@ -16,6 +16,7 @@ class _ProductDialogState extends State<ProductDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _stockController;
+  late final TextEditingController _priceController;
   late final TextEditingController _imageUrlController;
   late bool _active;
 
@@ -27,7 +28,10 @@ class _ProductDialogState extends State<ProductDialog> {
       text: widget.product?.description ?? '',
     );
     _stockController = TextEditingController(
-      text: widget.product?.stock.toString() ?? '0',
+      text: widget.product?.stock.toString() ?? '',
+    );
+    _priceController = TextEditingController(
+      text: widget.product?.price.toString() ?? '',
     );
     _imageUrlController = TextEditingController(
       text: widget.product?.imageUrl ?? '',
@@ -39,6 +43,7 @@ class _ProductDialogState extends State<ProductDialog> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _priceController.dispose();
     _stockController.dispose();
     _imageUrlController.dispose();
     super.dispose();
@@ -80,6 +85,12 @@ class _ProductDialogState extends State<ProductDialog> {
                 _buildTextField(_stockController, 'Stock',
                     keyboardType: TextInputType.number,
                     validator: _validateStock),
+                SizedBox(
+                  height: 12,
+                ),
+                _buildTextField(_priceController, 'Price',
+                    keyboardType: TextInputType.number,
+                    validator: _validatePrice),
                 const SizedBox(height: 12),
                 _buildTextField(_imageUrlController, 'Image URL'),
                 const SizedBox(height: 12),
@@ -138,6 +149,13 @@ class _ProductDialogState extends State<ProductDialog> {
     return null;
   }
 
+  String? _validatePrice(String? value) {
+    if (value == null || value.isEmpty) return 'Enter price';
+    final price = double.tryParse(value);
+    if (price == null || price < 0) return 'Enter valid price';
+    return null;
+  }
+
   String? _validateStock(String? value) {
     if (value == null || value.isEmpty) return 'Enter stock';
     final stock = int.tryParse(value);
@@ -148,7 +166,7 @@ class _ProductDialogState extends State<ProductDialog> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final product = Product(
-        id: widget.product?.id ?? 0,
+        id: widget.product?.id ?? DateTime.now().millisecondsSinceEpoch,
         name: _nameController.text,
         description: _descriptionController.text,
         stock: int.parse(_stockController.text),
@@ -156,10 +174,11 @@ class _ProductDialogState extends State<ProductDialog> {
             ? _imageUrlController.text
             : 'https://via.placeholder.com/80',
         isActive: _active,
-        price: widget.product?.price ?? 0.0,
+        price: double.tryParse(_priceController.text) ?? 0.0,
         createdAt: widget.product?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );
+      debugPrint('Product: ${product.toJson()}');
       Navigator.pop(context, product);
     }
   }

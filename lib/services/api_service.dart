@@ -29,7 +29,7 @@ class ApiService {
 
       final uri = Uri.parse('$_baseUrl/$endpoint');
       final headers = {
-        'Authorization': 'Bearer $token',
+        'Authorization': '$token',
         'Content-Type': 'application/json',
       };
 
@@ -83,13 +83,46 @@ class ApiService {
     }
   }
 
+  //refresh token
+  Future<String> refreshToken() async {
+    try {
+      final token = await authService.getToken();
+      if (token == null) {
+        throw UnauthorizedException('No authentication token found');
+      }
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': '$token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        final newToken = responseBody['token'];
+        if (newToken == null)
+          throw Exception('New token not found in response');
+
+        await authService.saveTokens(newToken, await refreshToken());
+        return newToken;
+      } else {
+        throw Exception('Failed to refresh token');
+      }
+    } catch (e) {
+      debugPrint('Error in refreshToken: $e');
+      rethrow;
+    }
+  }
+
   Future<User> getUserProfile(String token) async {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/user'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'Authorization': '$token',
         },
       );
 
@@ -133,12 +166,51 @@ class ApiService {
 
   Future<Product> createProduct(Product product) async {
     try {
-      final response = await _makeAuthenticatedRequest(
-        'POST',
-        'products',
-        body: product.toJson(),
+      // Validate required fields
+      if (product.name == null ||
+          product.name!.isEmpty ||
+          product.price == null ||
+          product.price! <= 0 ||
+          product.stock == null ||
+          product.stock! < 0 ||
+          product.description == null ||
+          product.description!.isEmpty ||
+          product.isActive == null ||
+          product.createdAt == null ||
+          product.updatedAt == null ||
+          product.imageUrl == null ||
+          product.imageUrl!.isEmpty) {
+        throw Exception('All fields are required');
+      }
+
+      final token = await authService.getToken();
+      if (token == null) {
+        throw UnauthorizedException('No authentication token found');
+      }
+      final response = await http.post(
+        Uri.parse('$_baseUrl/products'),
+        headers: {
+          'Authorization': '$token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(product.toJson()),
       );
-      return Product.fromJson(response['data']);
+      debugPrint(
+          'Create Product Response (${response.statusCode}): ${response.body}');
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody is Map &&
+            responseBody.containsKey('data') &&
+            responseBody['data'] != null) {
+          return Product.fromJson(responseBody['data']);
+        } else {
+          // Fallback: try to parse the response body directly as the product
+          return Product.fromJson(responseBody);
+        }
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to create product');
+      }
     } catch (e) {
       debugPrint('Error in createProduct: $e');
       rethrow;
@@ -147,12 +219,32 @@ class ApiService {
 
   Future<Product> updateProduct(Product product) async {
     try {
-      final response = await _makeAuthenticatedRequest(
-        'PUT',
-        'products/${product.id}',
-        body: product.toJson(),
+      final token = await authService.getToken();
+      if (token == null) {
+        throw UnauthorizedException('No authentication token found');
+      }
+      final response = await http.put(
+        Uri.parse('$_baseUrl/products/${product.id}'),
+        headers: {
+          'Authorization': '$token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(product.toJson()),
       );
-      return Product.fromJson(response['data']);
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody is Map &&
+            responseBody.containsKey('data') &&
+            responseBody['data'] != null) {
+          return Product.fromJson(responseBody['data']);
+        } else {
+          // Fallback: try to parse the response body directly as the product
+          return Product.fromJson(responseBody);
+        }
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to update product');
+      }
     } catch (e) {
       debugPrint('Error in updateProduct: $e');
       rethrow;
@@ -161,7 +253,21 @@ class ApiService {
 
   Future<void> deleteProduct(int id) async {
     try {
-      await _makeAuthenticatedRequest('DELETE', 'products/$id');
+      final token = await authService.getToken();
+      if (token == null) {
+        throw UnauthorizedException('No authentication token found');
+      }
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/products/$id'),
+        headers: {
+          'Authorization': '$token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to delete product');
+      }
     } catch (e) {
       debugPrint('Error in deleteProduct: $e');
       rethrow;
@@ -187,7 +293,7 @@ class ApiService {
             responseBody['refreshToken']; // Optional, if your API provides it
         if (token == null) throw Exception('Token not found in response');
 
-        await authService.saveToken(token);
+        await authService.saveTokens(token, refreshToken);
 
         // Create user object with the token and user data
         final userData = responseBody['user'];

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
-import '../services/api_service.dart' as api_service;
 import '../services/api_service.dart';
 import '../utils/exceptions.dart' as exceptions;
 

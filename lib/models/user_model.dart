@@ -4,6 +4,7 @@ class User {
   final String email;
   final String role; // 'admin' atau 'customer'
   final String? token; // Untuk autentikasi
+  final String? refreshToken; // Optional, if you want to handle refresh tokens
 
   User({
     required this.id,
@@ -11,6 +12,7 @@ class User {
     required this.email,
     required this.role,
     this.token,
+    this.refreshToken,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class User {
       email: json['email'],
       role: json['role'] ?? 'customer', // Default role
       token: json['token'], // This might be null for registration
+      refreshToken: json['refreshToken'], // Optional
     );
   }
 
@@ -30,5 +33,6 @@ class User {
         'email': email,
         'role': role,
         'token': token,
+        'refreshToken': refreshToken,
       };
 }

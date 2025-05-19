@@ -10,6 +10,12 @@ class SharedPrefs {
     await prefs.setString(_tokenKey, token);
   }
 
+  // Simpan refresh token
+  static Future<void> saveRefreshToken(String refreshToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('refresh_token', refreshToken);
+  }
+
   // Ambil token
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
